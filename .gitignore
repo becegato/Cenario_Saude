@@ -1,0 +1,11 @@
+.Rproj.user
+.Rhistory
+.Rdata
+.httr-oauth
+.DS_Store
+outputs
+data/3_tabela_financeira.parquet
+data/5_brazil_policy_uncertainty_data.xlsx
+data/5_seguro_desemprego_202204.xlsx
+archive
+outros

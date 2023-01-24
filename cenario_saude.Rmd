@@ -1,0 +1,283 @@
+---
+title: "CENÁRIO SAÚDE"
+output:
+  word_document:
+    number_sections: true
+---
+
+# Bibliotecas e funções
+
+```{r bib_fun, message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
+source("R/0_bibliotecas.R")
+
+source("R/0_funcoes.R")
+
+fs::dir_ls("R/") |>
+  purrr::walk(source)
+```
+
+# Parâmetros fixos
+
+```{r par_fixos, message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
+
+options(scipen = 999)
+
+options(dplyr.summarise.inform = FALSE)
+
+future::plan("multisession")
+
+ggplot2::theme_set(theme_minimal())
+
+tags_dir <- webscrapANS::create_sqlite_tags()
+
+if (!fs::dir_exists("outputs/")) fs::dir_create("outputs/")
+```
+
+# Parâmetros variáveis
+
+```{r par_var, message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
+year <- 2022
+
+edition <- glue::glue("3t_{year}")
+
+range_months <- "Jan-Set"
+
+tamanhos <- list(
+  numeros = 10 / ggplot2:::.pt,
+  legenda = 12,
+  eixos = 8 / ggplot2:::.pt
+)
+
+cores_cs <- c("#FF501A", "#4267FF", "#1937B3")
+
+cores <- list(
+  grafico_1 = cores_cs,
+  grafico_2 = cores_cs[1:2],
+  grafico_3_10 = "red",
+  grafico_4_11 = cores_cs,
+  grafico_5_12 = cores_cs,
+  grafico_6 = cores_cs,
+  grafico_7_13 = cores_cs[1],
+  grafico_8 = cores_cs[1:2],
+  grafico_9 = cores_cs,
+  grafico_14 = cores_cs[1:2]
+)
+```
+
+# Dados
+
+```{r dados_cenario_saude, message=FALSE, warning=FALSE, include=FALSE}
+functions_data <- tibble::tribble(
+  ~f, ~params,
+  # 1_dados_tabnet ----
+  "dados_tabnet", list(
+    par = list(
+      anos = seq(15, year - 2000),
+      tri = c("03", "06", "09", "12"),
+      tri_atual = "09",
+      tags_dir = tags_dir
+    )
+  ),
+  # 2_cadop ----
+  # 3_analise_financeira ----
+  "analise_financeira", list(
+    par = list(
+      anos = seq(2017, year),
+      tri = "3T",
+      meses_ticket = 9
+    )
+  ),
+  # 5_dados_var ----
+  "dados_var", list(
+    par = list(
+      ano = year,
+      mes_seg_desemp = "09",
+      tri_benef = c("03", "06", "09", "12"),
+      tags_dir = tags_dir
+    )
+  ),
+  # 6_modelos_var ----
+  "modelos_var", NULL
+)
+
+invisible(
+  purrr::invoke_map(
+    functions_data$f, 
+    functions_data$params
+  )
+)
+```
+
+# Tabelas e gráficos
+
+```{r graficos, message=FALSE, warning=TRUE, include=FALSE, paged.print=FALSE}
+# backup de apresentação ----
+
+dir_bkp <- "outputs/bkp_pptx/"
+
+if (!fs::dir_exists(dir_bkp)) fs::dir_create(dir_bkp)
+  
+file <- fs::dir_ls("outputs/", regexp = "editado\\.pptx")
+
+if (!rlang::is_empty(file)) {
+  file_name <- file |> 
+    stringr::str_sub(start = 9) |> 
+    stringr::str_extract("(.*)(?=\\.pptx)")
+  
+  date_time <- janitor::make_clean_names(lubridate::now()) |> 
+    stringr::str_sub(start = 2)
+  
+  file |> 
+    fs::file_copy(glue::glue("{dir_bkp}{file_name}_{date_time}.pptx"))
+}
+
+# gráficos ----
+
+functions_exports <- tibble::tribble(
+  ~f, ~params,
+  # |- gráfico 1 ----
+  "grafico_benef_previsao", list(
+    cores = cores$grafico_1, 
+    tipo =  "med",
+    tamanhos
+  ),
+  # |- gráfico 2 ----
+  "grafico_caged_var_tri", list(
+    cores = cores$grafico_2,
+    tamanhos
+  ),
+  # |- gráfico 3 ----
+  "grafico_taxa_cobertura", list(
+    cores = cores$grafico_3_10, 
+    tipo = "med",
+    tamanhos
+  ),
+  # |- gráfico 4 ----
+  "grafico_desemp_mercado", list(
+    cores = cores$grafico_4_11, 
+    tipo = "med",
+    tamanhos
+  ),
+    # |- gráfico 5 ----
+  "grafico_churn_rate", list(
+    cores = cores$grafico_5_12, 
+    tipo = "med",
+    tamanhos
+  ),
+
+  # |- gráfico 6 ----
+  "grafico_RD_RO", list(
+    cores = cores$grafico_6,
+    tamanhos,
+    range_months
+  ),
+  # |- gráfico 7 ----
+  "grafico_sinistralidade", list(
+    cores = cores$grafico_7_13, 
+    tipo = "med",
+    periodo = range_months,
+    tamanhos
+  ),
+  # |- grafico 8 ----
+  "grafico_ticket_medio", list(
+    cores = cores$grafico_8, 
+    tipo = "med",
+    anos = seq(year - 1, year),
+    periodo = range_months,
+    tamanhos
+  ),
+  # |- tabela 1 ----
+  "tabela_desemp_mercado", list(
+    tipo = "med"
+  ),
+  # |- tabela 2 ----
+  "tabela_desemp_fin", list(
+    tipo = "med",
+    range = range_months
+  ),
+  # |- gráfico 9 ----
+  "grafico_benef_previsao", list(
+    cores = cores$grafico_9, 
+    tipo = "odonto",
+    tamanhos
+  ),
+  # |- gráfico 10 ----
+  "grafico_taxa_cobertura", list(
+    cores = cores$grafico_3_10, 
+    tipo = "odonto",
+    tamanhos
+  ), 
+  # |- gráfico 11 ----
+  "grafico_desemp_mercado", list(
+    cores = cores$grafico_4_11, 
+    tipo = "odonto",
+    tamanhos
+  ), 
+    # |- gráfico 12 ----
+  "grafico_churn_rate", list(
+    cores = cores$grafico_5_12, 
+    tipo = "odonto",
+    tamanhos
+  ),
+
+  # |- gráfico 13 ----
+  "grafico_sinistralidade", list(
+    cores = cores$grafico_7_13, 
+    tipo = "odonto",
+    periodo = range_months,
+    tamanhos
+  ),
+  # |- grafico 14 ----
+  "grafico_ticket_medio", list(
+    cores = cores$grafico_14, 
+    tipo = "odonto",
+    anos = seq(year - 1, year),
+    periodo = range_months,
+    tamanhos
+  ),
+  # |- tabela 3 ----
+  "tabela_desemp_mercado", list(tipo = "odonto"),
+  # |- tabela 4 ----
+  "tabela_desemp_fin", list(
+    tipo = "odonto",
+    range = range_months
+  ),
+  # |- tabela 5 ----
+  "tabela_par_mercado_odonto", NULL
+)
+
+invisible(
+  purrr::invoke_map(
+    functions_exports$f, 
+    functions_exports$params
+  )
+)
+```
+
+# Arquivo
+
+```{r}
+files <- fs::dir_ls("outputs/")
+
+data <- stringr::str_subset(files, "xlsx|png|txt")
+
+plots <- stringr::str_subset(files, "pptx|illustrator")
+
+if (!fs::dir_exists("archive")) {
+  fs::dir_create("archive")
+} else {
+  fs::dir_delete("archive/")
+  
+  fs::dir_create("archive/")
+}
+
+zip::zip(
+  zipfile = glue::glue("archive/cenario_saude_{edition}_{date_time}_data.zip"),
+  files = data
+)
+
+zip::zip(
+  zipfile = glue::glue("archive/cenario_saude_{edition}_{date_time}_plots.zip"),
+  files = plots
+)
+```
